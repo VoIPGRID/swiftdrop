@@ -1,0 +1,6 @@
+[template]
+src = "swiftdrop.ini.tmpl"
+dest = "/etc/swiftdrop.ini"
+keys = [
+    "/swiftdrop",
+]

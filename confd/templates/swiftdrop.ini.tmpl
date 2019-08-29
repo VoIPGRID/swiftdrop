@@ -1,0 +1,19 @@
+{{ range $account := lsdir "/swiftdrop" -}}
+[{{ toUpper $account }}]
+{{ range $option := gets (print "/swiftdrop/" $account "/*") }}
+{{ base $option.Key }} = {{ $option.Value }}
+{{- end }}
+{{ range $option := gets (print "/swiftdrop/" $account "/*/*") }}
+{{ replace (replace $option.Key (print "/swiftdrop/" $account "/") "" 1) "/" "_" -1 }} = {{ $option.Value }}
+{{- end }}
+{{ range $option := gets (print "/swiftdrop/" $account "/*/*/*") }}
+{{ replace (replace $option.Key (print "/swiftdrop/" $account "/") "" 1) "/" "_" -1 }} = {{ $option.Value }}
+{{- end }}
+{{ range $option := gets (print "/swiftdrop/" $account "/*/*/*/*") }}
+{{ replace (replace $option.Key (print "/swiftdrop/" $account "/") "" 1) "/" "_" -1 }} = {{ $option.Value }}
+{{- end }}
+{{ range $option := gets (print "/swiftdrop/" $account "/*/*/*/*/*") }}
+{{ replace (replace $option.Key (print "/swiftdrop/" $account "/") "" 1) "/" "_" -1 }} = {{ $option.Value }}
+{{- end }}
+
+{{ end }}

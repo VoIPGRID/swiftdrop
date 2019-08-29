@@ -1,0 +1,6 @@
+[template]
+src = "transport.tmpl"
+dest = "/etc/postfix/transport"
+keys = [
+    "/myrecipients",
+]
