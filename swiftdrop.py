@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # swiftdrop.py (part of voipgrid/swiftdrop) listens for SMTP on 10025
-#   and saves e-mails to OpenStack Swift
+#   and saves emails to OpenStack Swift
 # Copyright (C) 2019  Walter Doekes, Harm Geerts, VoIPGRID B.V.
 #
 # This program is free software: you can redistribute it and/or modify
@@ -407,7 +407,7 @@ def main_lda(config, recipients, message):
 def main():
     # There are three modes of operation:
     # - swift connection test
-    # - single e-mail save
+    # - single email save
     # - proxy-daemon-mode
     parser = ArgumentParser(
         description='Drop email to a swift server.')

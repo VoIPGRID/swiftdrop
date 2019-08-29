@@ -87,6 +87,7 @@ Non-completed subtickets
 ------------------------
 
 - Add GPLv3 license
+- Check that HELO hostname is remotely resolvable
 - Add currently implemented cur/MAILDIR scheme in synopsis at the top
 - Document how the mails are stored and write up example how they can be
   retrieved/dequeued
