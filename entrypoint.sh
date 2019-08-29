@@ -17,7 +17,7 @@
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 set -e
 
-[ "${DEBUG}" == "yes" ] && set -x
+[ "${DEBUG}" = "yes" ] && set -x
 
 postfix_config() {
     key=$1
