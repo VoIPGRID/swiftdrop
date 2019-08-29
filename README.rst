@@ -1,15 +1,54 @@
 SwiftDrop
 =========
 
-*XXX synopsis here*
+*SwiftDrop, or smtp2swift, receives email messages over SMTP and writes
+them to a configured OpenStack Swift container where they await further
+processing by some other process.*
 
-*XXX LICENSE info ook here*
+It consists of:
+
+* a **docker** image;
+* with a **postfix** SMTP daemon;
+* some glue to make Postfix runnable inside docker;
+* and a *before-queue* filter that stores incoming messages in **swift**.
+
+The messages end up in *Maildir*-format inside the ``cur/`` path in
+the configured Swift container.
+
+Basic usage involves:
+
+* running the docker image;
+* sending a message/rfc822 email message over SMTP on port 25;
+* seeing the message end up in the Swift container, named something like
+  ``cur/1567067375.M6337175P228.f87ce1e3553a,S=241``, where the first
+  digits are the delivery unixtime.
+
+See `run-docker.sh`_ for a sample invocation.
+
+Processing the delivered mail is beyond the scope of this project, but a
+suggested operation is:
+
+* listing the files in ``cur/``;
+* taking the first -- using a key-based global lock to lock that file --
+  downloading it, and moving it (copy+delete) to ``processing/``;
+* doing the processing;
+* then -- again, using a lock -- moving it from ``processing/`` to one
+  of ``done/``, ``failed/`` or ``retry/``;
+* and using a separate job to delete very old messages.
+
+See `swiftq-example.py`_ for sample dequeueing.
+
+
+License
+-------
+
+This project is licensed under the terms of the GPLv3 license.
 
 
 Configuration
 -------------
 
-You can configure accounts for swiftdrop using environment variables in
+You can configure accounts for SwiftDrop using environment variables in
 the form ``SWIFTDROP_<SECTION>_<OPTION>``.
 
 You must specify at least one account where ``SECTION=DEFAULT``. The
@@ -86,7 +125,6 @@ Completed subtickets
 Non-completed subtickets
 ------------------------
 
-- Add GPLv3 license
 - Check that HELO hostname is remotely resolvable
 - Add currently implemented cur/MAILDIR scheme in synopsis at the top
 - Document how the mails are stored and write up example how they can be
@@ -103,3 +141,7 @@ Non-completed subtickets
 - These instances will at the edge (direct MX, so we'll still need to
   add opportunistic TLS, and possibly minimal spam/abuse protections)
 - This should be hosted at OSSO while spindle does not load balance non-http
+
+
+.. _`run-docker.sh`: examples/run-docker.sh
+.. _`swiftq-example.py`: examples/swiftq-example.py
