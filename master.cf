@@ -20,6 +20,8 @@ smtp      inet  n       -       y       -       -       smtpd
   # Postfix 2.7+; fixes so the mail is first retreived and then sent to
   # the filter in one go.
   -o smtpd_proxy_options=speed_adjust
+  # Enable proxy protocol v1 so we get remote IPs from load balancer
+  -o smtpd_upstream_proxy_protocol=haproxy
 
 127.0.0.1:10026 inet n  -       y       -       -       smtpd
   -o smtpd_authorized_xforward_hosts=127.0.0.0/8
