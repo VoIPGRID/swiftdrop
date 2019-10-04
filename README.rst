@@ -125,28 +125,32 @@ Completed subtickets
 - Describe if/how do we cope with duplicates (email message-id cannot be
   used as globablly unique value)
 - Add example code to dequeue stored mail (if possible with minimal
-  dependencies)
+  dependencies): see examples/swiftq-example.py
+- Opportunistic TLS has been observed to work out of the box.
+- Hosting at OSSO in ossoio-k8s + swift2019.
 
 
 Non-completed subtickets
 ------------------------
 
+- Add currently implemented cur/MAILDIR scheme in synopsis at the top.
+- Failures are now logged, but K8S is not scraped: need ERRORMAIL handler?
 - Check that HELO hostname is remotely resolvable
-- Add currently implemented cur/MAILDIR scheme in synopsis at the top
-- Document how the mails are stored and write up example how they can be
-  retrieved/dequeued
-- Fix main.cf to cope with SSL (allow anonymous starttls if the peer
-  wants to)
-- Add countermeasures against spam / floods / other malicious stuff (?)
+- Fix various @mydomain e-mail addresses to forward to elsewhere (admin,
+  postmaster, hostmaster, etc.. to a Spindle address).
+- Fix mydomain/postmaster@mydomain stuff to catch trouble. Right now
+  failures end up at postmaster@$mydomain (which is versturen.nl).
 - Check/fix that SSL is kept up to date (both the ca-certificates -- for
   swift uploads -- and the postfix SSL keys)
-- Review max (attachment) filesize
-- Add (log? mail?) notification when Swift upload fails; so we can look into it
-- Also pass along admin/postmaster/hostmaster/etc@ etc.. to a custom
-  spindle address
-- These instances will at the edge (direct MX, so we'll still need to
-  add opportunistic TLS, and possibly minimal spam/abuse protections)
-- This should be hosted at OSSO while spindle does not load balance non-http
+- Review max (attachment) filesize.
+
+
+Optional subtickets
+-------------------
+
+- Add basic SPF checks?
+- Add DKIM checks?
+- Add countermeasures against spam / floods / other malicious stuff (?)
 
 
 .. _`run-docker.sh`: examples/run-docker.sh
