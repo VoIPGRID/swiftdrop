@@ -17,14 +17,30 @@
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 from argparse import ArgumentParser
 from configparser import ConfigParser
+from logging.handlers import SysLogHandler
 from os import getpid
 from swiftclient import Connection
 from time import time
+import logging
+import logging.handlers
+import os.path
 import select
 import signal
 import socket
-import os.path
 import sys
+
+# Set up logging (no datetime, this is handled by docker/k8s).
+log = logging.getLogger(__name__)
+log.setLevel(logging.DEBUG)
+try:
+    handler = SysLogHandler(
+        address='/dev/log', facility=SysLogHandler.LOG_DAEMON)
+except FileNotFoundError:
+    handler = logging.StreamHandler()
+formatter = logging.Formatter(
+    '[%(process)d] %(module)s.%(funcName)s: %(message)s')
+handler.setFormatter(formatter)
+log.addHandler(handler)
 
 
 class SmtpProxyMaster:
@@ -35,12 +51,14 @@ class SmtpProxyMaster:
         signal.signal(signal.SIGCHLD, signal.SIG_IGN)
 
         # Start listening.
+        log.info('Starting')
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         self.sock.bind(('127.0.0.1', 10025))
         self.sock.listen(100)
 
     def run(self):
+        log.info('Mainloop')
         while True:
             conn, address = self.sock.accept()
             pid = os.fork()
@@ -50,10 +68,11 @@ class SmtpProxyMaster:
             else:
                 # Handle the connection.
                 try:
+                    log.info('Handling %r', address)
                     handler = self.handler_factory(conn)
                     handler.handle()
-                except Exception as e:
-                    print('swiftdrop', getpid(), 'ERR', e)
+                except Exception:
+                    log.exception('During handling of %r', address)
                     os._exit(1)
                 os._exit(0)
 
@@ -92,7 +111,7 @@ class SmtpProxyHackToGetData(object):
                 try:
                     commands[0](*commands[1:])
                 except Exception as e:
-                    print('swiftdrop', getpid(), 'DBG', commands, e)
+                    log.info('During handling of %r', commands, exception=e)
 
     def collect_email(self):
         """
@@ -156,7 +175,7 @@ class SmtpProxyHackToGetData(object):
                 data = self.in_.recv(bufsiz)
                 if not data:
                     raise StopIteration('in_ disconnected')
-                # print(pid, '>>>', len(data), repr(data)[0:72] + '...')
+                log.debug('[setup] >-- (%d bytes) %.64r...', len(data), data)
 
                 # Technically, this could be split over multiple
                 # recv()s, but should never happen in practise. (Same
@@ -167,9 +186,11 @@ class SmtpProxyHackToGetData(object):
                         .decode('utf-8'))
 
                 if data == b'DATA\r\n':
+                    log.debug('[setup] <-- 354 End data...')
                     self.in_.send(b'354 End data with <CR><LF>.<CR><LF>\r\n')
 
                     # We're done, close forward destination:
+                    log.debug('[setup] --> RSET+QUIT')
                     self.out.send(b'RSET\r\n')
                     self.out.recv(bufsiz)
                     self.out.send(b'QUIT\r\n')
@@ -178,14 +199,14 @@ class SmtpProxyHackToGetData(object):
                     # Break so we can start collecting DATA.
                     break
 
+                log.debug('[setup] --> (%d bytes) %.64r...', len(data), data)
                 self.out.send(data)
 
             if self.out in rlist:
                 data = self.out.recv(bufsiz)
                 if not data:
                     raise StopIteration('out disconnected')
-                # print(pid, '<<<', len(data), repr(data)[0:72] + '...')
-
+                log.debug('[setup] <<< (%d bytes) %.64r...', len(data), data)
                 self.in_.send(data)
 
         # Fetch data.
@@ -194,7 +215,7 @@ class SmtpProxyHackToGetData(object):
             data = self.in_.recv(bufsiz)
             if not data:
                 raise StopIteration('in_ disconnected')
-            # print(pid, '>>>', len(data), repr(data)[0:72] + '...')
+            log.debug('[data] --> (%d bytes) %.64r...', len(data), data)
 
             databuf.append(data)
             last_bytes = self.get_last_bytes(databuf, 5)
@@ -249,7 +270,7 @@ class SwiftEmailUploader(object):
             for option, value in config.items():
                 if option.startswith('os_options_') and value:
                     short_option = option[len('os_options_'):]
-                    os_options[short_option] = config.get(option)
+                    os_options[short_option] = value
 
             connection = Connection(
                 auth_version='3', authurl=config['authurl'],
@@ -324,16 +345,20 @@ class SwiftEmailUploader(object):
             config = self.config[destination]
             filename = self.generate_filename(message)
 
+            log.info(
+                '[swift] Uploading (%d bytes) to %s %s: %s',
+                len(message), destination, config['container'],
+                filename)
             connection = self.get_connection(config)
-            connection.put_container(config['container'])
+            # connection.put_container(config['container'])
             connection.put_object(
                 config['container'], filename, message,
-                content_type='message/rfc822')
-            print(
-                'swiftdrop [{pid}] INFO upload {dest} OK ({cont!r}): {file}'
-                .format(
-                    pid=getpid(), dest=destination, cont=config['container'],
-                    file=filename))
+                content_type='text/plain')  # 'message/rfc822' raises 502s!?
+            # .. with swift 2.22, we're seeing 502s by the nginx proxy
+            # because the backend apparently disconnects if we use
+            # message/rfc822. This is unexplained thusfar.
+
+        log.info('[swift] All uploads done')
 
     def test_connect(self, recipients):
         unique_destinations = self.recipients_to_destinations(recipients)
@@ -341,14 +366,14 @@ class SwiftEmailUploader(object):
         for destination in unique_destinations:
             config = self.config[destination]
             connection = self.get_connection(config)
-            connection.put_container(config['container'])
+            # connection.put_container(config['container'])
             resp_headers, containers = connection.get_account()
             if config['container'] not in [i['name'] for i in containers]:
                 raise ValueError('missing container {} for {}'.format(
                     config['container'], destination))
-            print(
-                'swiftdrop [{pid}] DBG conn to {dest} OK ({cont!r})'.format(
-                    pid=getpid(), dest=destination, cont=config['container']))
+            log.info(
+                '[swift] Connection to %s OK: %s', destination,
+                config['container'])
 
     def recipients_to_destinations(self, recipients):
         destinations = set()
