@@ -63,22 +63,27 @@ account, could be configured as follows::
     RELAY_DOMAINS=example.com,test.com
 
     # Postfix configuration read by confd
-    MYRECIPIENTS='["swiftdrop@example.com", "fallback@test.com"]'
+    MYRECIPIENTS='["swiftdrop@example.com", "whatever@test.com"]'
 
     # Swiftdrop configuration read by confd
     SWIFTDROP_DEFAULT_RECIPIENT=DEFAULT
-    SWIFTDROP_DEFAULT_CONTAINER=mycontainer
+    SWIFTDROP_DEFAULT_CONTAINER=fallback_and_test_container
     # Swiftdrop configuration as used by swiftclient.Connection
     SWIFTDROP_DEFAULT_AUTH_VERSION=3
     SWIFTDROP_DEFAULT_AUTHURL=https://keystone-server/v3
     SWIFTDROP_DEFAULT_USER=myuser
     SWIFTDROP_DEFAULT_KEY=xxx
-    SWIFTDROP_DEFAULT_OS_OPTIONS_PROJECT_ID=123abc
-    SWIFTDROP_DEFAULT_OS_OPTIONS_USER_DOMAIN_ID=123abc
+    SWIFTDROP_DEFAULT_OS_OPTIONS_PROJECT_DOMAIN_NAME=project_domain
+    SWIFTDROP_DEFAULT_OS_OPTIONS_PROJECT_NAME=project
+    SWIFTDROP_DEFAULT_OS_OPTIONS_USER_DOMAIN_NAME=user_domain
 
-    # Swiftdrop configuration for a secondary address
-    SWIFTDROP_TEST_RECIPIENT=fallback@test.com
-    SWIFTDROP_TEST_CONTAINER=test
+    # Swiftdrop configuration for a secondary address;
+    # note that values from DEFAULT are available here too,
+    # and need to be overwritten with blanks if they conflict.
+    # For sanity, the DEFAULT above is the catch-all, and this
+    # one handles only the "production" address.
+    SWIFTDROP_PRODUCTION_RECIPIENT=swiftdrop@example.com
+    SWIFTDROP_PRODUCTION_CONTAINER=production
     ...
 
 The ``confd`` binary will convert the environment to
@@ -89,17 +94,18 @@ that may look somewhat like this:
 
     [DEFAULT]
     recipient = DEFAULT
-    container = mycontainer
+    container = fallback_and_test_container
     auth_version = 3
     authurl = https://keystone-server/v3
     user = myuser
     key = xxx
-    os_options_project_id = 123abc
-    os_options_user_domain_id = 123abc
+    os_options_project_name = project
+    os_options_project_domain_name = project_domain
+    os_options_user_domain_name = user_domain
 
-    [TEST]
-    recipient = fallback@test.com
-    container = test
+    [PRODUCTION]
+    recipient = swiftdrop@example.com
+    container = production
     ...
 
 
