@@ -64,13 +64,21 @@ local_transport = error:local mail delivery is disabled
 parent_domain_matches_subdomains =
     debug_peer_list smtpd_access_maps
 
-# The recipients are looked up to see if they have the swiftdrop transport
-# (note that this isn't used when the smtpd_proxy_filter and swiftdrop
-# daemon is used).
+# There are two modes of operation:
+# - using transport_maps, a 'swiftdrop' daemon child is spawned, based
+#   on the destination->transport lookup in transport_maps. This is a one-shot
+#   operation.
+# - using smtpd_proxy_filter (see master.cf), a separately started
+#   daemon that accepts mail from this postfix. This is more efficient,
+#   and allows mail to be rejected before it is queued.
+# As a fallback, the transport is enabled here. But we should never
+# reach this, is the smtpd_proxy_filter drops the mail when it is
+# accepted.
 transport_maps = hash:/etc/postfix/transport
+
 # NOTE: configured through entrypoint
 relay_domains =
-# We use the same map to check if the recipient should be accepted so
-# we don't act as an open relay for $relay_domains.
-# (the lookup value for this map is not used)
+# We use the same map as the transport to check if the recipient should
+# be accepted so we don't act as an open relay for $relay_domains.
+# (Only the lookup 'key' in transport_maps is used, the value is ignored.)
 relay_recipient_maps = hash:/etc/postfix/transport
