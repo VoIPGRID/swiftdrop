@@ -20,6 +20,7 @@ from configparser import ConfigParser
 from logging.handlers import SysLogHandler
 from os import getpid
 from swiftclient import Connection
+from swiftclient.exceptions import ClientException
 from time import time
 import logging
 import logging.handlers
@@ -417,18 +418,29 @@ class SwiftEmailUploader(object):
 
     def test_connect(self, recipients):
         unique_destinations = self.recipients_to_destinations(recipients)
+        failures = 0
 
         for destination in unique_destinations:
             config = self.config[destination]
             connection = self.get_connection(config)
             # connection.put_container(config['container'])
-            resp_headers, containers = connection.get_account()
-            if config['container'] not in [i['name'] for i in containers]:
-                raise ValueError('missing container {} for {}'.format(
-                    config['container'], destination))
-            log.info(
-                '[swift] Connection to %s OK: %s', destination,
-                config['container'])
+            try:
+                resp_headers, containers = connection.get_account()
+            except ClientException as e:
+                log.error(
+                    '[swift] Connection to %s FAILED: %s', destination,
+                    e)
+                failures += 1
+            else:
+                if config['container'] not in [i['name'] for i in containers]:
+                    raise ValueError('missing container {} for {}'.format(
+                        config['container'], destination))
+                log.info(
+                    '[swift] Connection to %s OK: %s', destination,
+                    config['container'])
+
+        if failures:
+            sys.exit(1)
 
     def recipients_to_destinations(self, recipients):
         destinations = set()
