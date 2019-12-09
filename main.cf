@@ -72,6 +72,10 @@ parent_domain_matches_subdomains =
 #   postfix can handle them anyway (virtual_alias_maps)
 transport_maps = hash:/etc/postfix/transport
 
+# When accepting incoming message, we may want to allow larger images
+# 50MB instead of the default 10MB
+message_size_limit = 52428800
+
 # NOTE: This is configured through the entrypoint
 relay_domains =
 # We use the same map as the transport to check if the recipient should

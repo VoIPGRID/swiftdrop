@@ -135,19 +135,7 @@ Completed subtickets
 - Opportunistic TLS has been observed to work out of the box.
 - Hosting at OSSO in ossoio-k8s + swift2019.
 - Allow forwarding of postmaster@ and other names to elsewhere.
-
-
-Non-completed subtickets
-------------------------
-
-- Add currently implemented cur/MAILDIR scheme in synopsis at the top.
-- Failures are now logged, but K8S is not scraped: do we need an
-  ERRORMAIL (logging) handler?
-- Fix mydomain/postmaster@mydomain stuff to catch trouble. Right now
-  failures end up at postmaster@$mydomain (which is versturen.nl).
-- Check/fix that SSL is kept up to date (both the ca-certificates -- for
-  swift uploads -- and the postfix SSL keys)
-- Review max (attachment) filesize ($message_size_limit?)
+- Enlarge message limits to 50MB.
 
 
 Optional subtickets
@@ -155,7 +143,12 @@ Optional subtickets
 
 - Add basic SPF checks?
 - Add DKIM checks?
-- Add countermeasures against spam / floods / other malicious stuff (?)
+- Add countermeasures against spam / floods / other malicious stuff.
+- Add currently implemented cur/MAILDIR scheme in synopsis at the top.
+- Check/fix that SSL is kept up to date (both the ca-certificates -- for
+  swift uploads -- and that postfix SSL snakeoil keys are kept up to date).
+- Failures are now logged, but K8S is not scraped: do we need an
+  ERRORMAIL (logging) handler?
 
 
 .. _`run-docker.sh`: examples/run-docker.sh
