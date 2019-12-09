@@ -59,6 +59,7 @@ incoming mail over an *acceptance* and a *production* container, for *three
 distinct e-mail addresses*, could be configured as follows::
 
     # Postfix configuration (read by start wrapper and/or confd)
+    # - postfix hostname, prefer having it resolvable, also used in HELO
     MYHOSTNAME=swiftdrop.example.com
     # - swiftdrop destinations (see also SWIFTDROP_xxx_RECIPIENTS)
     RECIPIENTS='[
@@ -119,7 +120,7 @@ Completed subtickets
 - Docker + Stretch image
 - Postfix (3+)
 - Python3.5 (comes with postfix install)
-- Config of Swift accounts, and mail destunations through ENV
+- Config of Swift accounts, and mail destinations through ENV
 - main.cf config, for relay of desired recipients to Swift
 - master.cf config
 - Check Swift account (auth) on startup
@@ -132,19 +133,20 @@ Completed subtickets
   dependencies): see examples/swiftq-example.py
 - Opportunistic TLS has been observed to work out of the box.
 - Hosting at OSSO in ossoio-k8s + swift2019.
+- Allow forwarding of postmaster@ and other names to elsewhere.
 
 
 Non-completed subtickets
 ------------------------
 
 - Add currently implemented cur/MAILDIR scheme in synopsis at the top.
-- Failures are now logged, but K8S is not scraped: need ERRORMAIL handler?
-- Check that HELO hostname is remotely resolvable
+- Failures are now logged, but K8S is not scraped: do we need an
+  ERRORMAIL (logging) handler?
 - Fix mydomain/postmaster@mydomain stuff to catch trouble. Right now
   failures end up at postmaster@$mydomain (which is versturen.nl).
 - Check/fix that SSL is kept up to date (both the ca-certificates -- for
   swift uploads -- and the postfix SSL keys)
-- Review max (attachment) filesize.
+- Review max (attachment) filesize ($message_size_limit?)
 
 
 Optional subtickets
