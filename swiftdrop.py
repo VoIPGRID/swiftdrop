@@ -84,12 +84,21 @@ class SmtpProxyHackToGetData(object):
 
     Override on_data(self, message) to process the message. Raise any
     error to bail: this will report 4xx back to upstream.
+
+    Args:
+        in_[socket]: Socket in the incoming side
+        handle_recipients[list]: List of recipients to handle. Anyone
+            not in this list will get forwarded. (In fact, if there is
+            any in this list, they will all get forwarded, as we do not
+            edit RCPT TO. The (already) handled ones are discard by
+            postfix later on.)
     """
-    def __init__(self, in_):
+    def __init__(self, in_, handle_recipients):
         """
         Connect to downstream so we can use their communicating skills.
         """
         self.in_ = in_
+        self.handle_recipients = set(i.lower() for i in handle_recipients)
         self.out = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.out.connect(('127.0.0.1', 10026))
 
@@ -99,7 +108,8 @@ class SmtpProxyHackToGetData(object):
     def handle(self):
         try:
             recipients, message = self.collect_email()
-            self.on_data(message, recipients=recipients)
+            if recipients:
+                self.on_data(message, recipients=recipients)
             self.report_success()
         finally:
             for commands in (
@@ -156,10 +166,15 @@ class SmtpProxyHackToGetData(object):
         'QUIT\r\n'
         '221 2.0.0 Bye\r\n'
         """
+        skip_forward, handle_recipients, pass_recipients = (
+            self._collect_email_setup())
+        data = self._collect_email_data(skip_forward=skip_forward)
+        return handle_recipients, data
+
+    def _collect_email_setup(self):
         bufsiz = 32767
-        # pid = getpid()
-        recipients = []
         who = (self.in_, self.out)
+        all_recipients = []
 
         # Talk to other MX and relay all messages, but wait before
         # forwarding DATA.
@@ -178,26 +193,50 @@ class SmtpProxyHackToGetData(object):
                 log.debug('[setup] >-- (%d bytes) %.64r...', len(data), data)
 
                 # Technically, this could be split over multiple
-                # recv()s, but should never happen in practise. (Same
+                # recv()s, but should never happen in practice. (Same
                 # with 'DATA' below.)
                 if data.startswith(b'RCPT TO:<'):
-                    recipients.append(
+                    all_recipients.append(
                         data.split(b'>', 1)[0].split(b'<', 1)[1]
-                        .decode('utf-8'))
+                        .decode('utf-8').lower())
 
                 if data == b'DATA\r\n':
-                    log.debug('[setup] <-- 354 End data...')
-                    self.in_.send(b'354 End data with <CR><LF>.<CR><LF>\r\n')
+                    handle_recipients = [
+                        recipient for recipient in all_recipients
+                        if recipient in self.handle_recipients]
+                    pass_recipients = [
+                        recipient for recipient in all_recipients
+                        if recipient not in self.handle_recipients]
+                    log.debug(
+                        '[setup] handle_recipients: %s', handle_recipients)
+                    log.debug(
+                        '[setup] pass_recipients: %s', pass_recipients)
 
-                    # We're done, close forward destination:
-                    log.debug('[setup] --> RSET+QUIT')
-                    self.out.send(b'RSET\r\n')
-                    self.out.recv(bufsiz)
-                    self.out.send(b'QUIT\r\n')
-                    self.out.recv(bufsiz)
+                    if pass_recipients:
+                        # We must forward it into postfix, regardless of
+                        # whether we handle any as well.
+                        log.debug(
+                            '[setup] --> (%d bytes) %.64r...', len(data), data)
+                        self.out.send(data)
+                        data = self.out.recv(bufsiz)
+                        log.debug(
+                            '[setup] <<< (%d bytes) %.64r...', len(data), data)
+                        self.in_.send(data)
+                        skip_forward = False
+                    else:
+                        # We capture all. We can drop the out-connection now.
+                        log.debug('[setup] <-- 354 End data...')
+                        self.in_.send(
+                            b'354 End data with <CR><LF>.<CR><LF>\r\n')
 
-                    # Break so we can start collecting DATA.
-                    break
+                        # We're done, close forward destination:
+                        log.debug('[setup] --> RSET')
+                        self.out.send(b'RSET\r\n')
+                        self.out.recv(bufsiz)
+                        skip_forward = True
+
+                    # Done with setup. Return recipients.
+                    return skip_forward, handle_recipients, pass_recipients
 
                 log.debug('[setup] --> (%d bytes) %.64r...', len(data), data)
                 self.out.send(data)
@@ -208,6 +247,9 @@ class SmtpProxyHackToGetData(object):
                     raise StopIteration('out disconnected')
                 log.debug('[setup] <<< (%d bytes) %.64r...', len(data), data)
                 self.in_.send(data)
+
+    def _collect_email_data(self, skip_forward):
+        bufsiz = 32767
 
         # Fetch data.
         databuf = []
@@ -222,8 +264,21 @@ class SmtpProxyHackToGetData(object):
             if last_bytes == b'\r\n.\r\n':
                 break
 
+        # Send data on.
+        if not skip_forward:
+            for data in databuf:
+                self.out.send(data)
+
+            # Eat the 250. Or return error.
+            data = self.out.recv(bufsiz)
+            if not data.startswith(b'250 '):
+                raise StopIteration('got {} from internal postfix'.format(
+                    data))
+            self.out.send(b'QUIT\r\n')
+            self.out.recv(bufsiz)
+
         # Return data.
-        return recipients, b''.join(databuf)[0:-3]  # drop trailing ".\r\n"
+        return b''.join(databuf)[0:-3]  # drop trailing ".\r\n"
 
     def report_success(self):
         """
@@ -379,11 +434,12 @@ class SwiftEmailUploader(object):
         destinations = set()
         for recipient in recipients:
             for section in self.config:
-                if recipient == self.config[section].get('recipient'):
+                srecipients = self.config[section].get('recipients').split(',')
+                if recipient in srecipients:
                     destinations.add(section)
                     break
             else:
-                destinations.add('DEFAULT')
+                assert False, '{} not found in recipients'.format(recipient)
         return destinations
 
 
@@ -413,7 +469,14 @@ def exit_message(message, code=1, parser=None):
 def main_proxy(config):
     def handler_factory(*args, **kwargs):
         uploader = SwiftEmailUploader(config)
-        return SwiftEmailUploaderHandler(uploader, *args, **kwargs)
+
+        handle_recipients = set()
+        for section in config:
+            srecipients = config[section].get('recipients').split(',')
+            handle_recipients.update(srecipients)
+
+        return SwiftEmailUploaderHandler(
+            uploader, handle_recipients=handle_recipients, *args, **kwargs)
 
     proxy = SmtpProxyMaster(handler_factory)
     proxy.run()
@@ -431,9 +494,9 @@ def main_lda(config, recipients, message):
 
 def main():
     # There are three modes of operation:
-    # - swift connection test
-    # - single email save
     # - proxy-daemon-mode
+    # - swift connection test
+    # - one-shot email save (DISABLED)
     parser = ArgumentParser(
         description='Drop email to a swift server.')
     parser.add_argument(
@@ -446,7 +509,8 @@ def main():
     parser.add_argument(
         '--run-as-proxy', action='store_true', help='Run in proxy mode')
     parser.add_argument(
-        'recipients', metavar='RECIPIENT', nargs='*', help='The recipients')
+        'recipients', metavar='RECIPIENT', nargs='*', help=(
+            'The recipients; used for test-connect or one-shot mode only'))
     args = parser.parse_args()
 
     config = ConfigParser(allow_no_value=True)
@@ -467,6 +531,11 @@ def main():
     elif args.test_connect:
         main_swift_connect_test(config, args.recipients)
     else:
+        raise NotImplementedError(
+            "You cannot use this, unless you switch 'discard:silently' "
+            "in transports back to 'swiftdrop:'. The discarding is "
+            "necessary because we end up there _after_ uploading to swift "
+            "if we _also_ have a non-swift recipient.")
         if args.input == '-':
             if sys.stdin.isatty():
                 exit_message('error: missing input on stdin', parser=parser)

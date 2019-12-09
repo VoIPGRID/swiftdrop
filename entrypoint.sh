@@ -36,16 +36,25 @@ postfix_config "myhostname" "$MYHOSTNAME"
 
 postfix_config "mydomain" "$MYDOMAIN"
 postfix_config "myorigin" '$mydomain'
-postfix_config "relay_domains" "$RELAY_DOMAINS"
 
-# Create /etc/swiftdrop.ini and /etc/postfix/transport
-confd -onetime -backend env
+# Create /etc/swiftdrop.ini, /etc/postfix/relay_domains,
+# /etc/postfix/transport, /etc/postfix/virtual
+confd -onetime -backend env || true
+
+# relay_domains is assembled from DESTINATIONS and FORWARDS
+test -s /etc/postfix/relay_domains
+postfix_config "relay_domains" "$(\
+    sort -u /etc/postfix/relay_domains | tr '\n' ' ')"
 
 newaliases
 postmap /etc/postfix/transport
+postmap /etc/postfix/virtual
 
-# Check swift connection before startup
-swiftdrop.py --test-connect $(awk '/^[^#]/{print $1}' /etc/postfix/transport)
+# Check swift connection before startup: run it for every 'swiftdrop'
+# destination that may or may not have a different Swift backend
+test -s /etc/postfix/transport
+swiftdrop.py --test-connect $(\
+    awk '/^[^#].* discard:silently$/{print $1}' /etc/postfix/transport)
 
 # Start argv
 exec "$@"

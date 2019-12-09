@@ -1,0 +1,7 @@
+[template]
+src = "relay_domains.tmpl"
+dest = "/etc/postfix/relay_domains"
+keys = [
+    "/forwards",
+    "/recipients",
+]

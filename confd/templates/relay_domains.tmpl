@@ -1,0 +1,6 @@
+{{ range $key, $value := json (getv "/forwards" "{}") -}}
+{{ index (split $key "@") 1 }}
+{{ end -}}
+{{ range $key := jsonArray (getv "/recipients" "[]") -}}
+{{ index (split $key "@") 1 }}
+{{ end -}}

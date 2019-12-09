@@ -1,0 +1,5 @@
+# E-mail forwards, in the form:
+# EMAIL_ORIG_DST relay:EMAIL_NEW_DST
+{{ range $key, $value := json (getv "/forwards" "{}") }}
+{{ $key }} {{ $value }}
+{{- end }}

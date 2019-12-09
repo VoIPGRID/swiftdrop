@@ -18,14 +18,19 @@
 
 exec docker run --name swiftdrop_example --rm \
   -e MYHOSTNAME=swiftdrop.example.com \
-  -e RELAY_DOMAINS=example.com \
-  -e MYRECIPIENTS='["deliver@example.com"]' \
-  -e SWIFTDROP_DEFAULT_RECIPIENT=DEFAULT \
+  -e RECIPIENTS='["deliver@example.com"]' \
+  -e FORWARDS='{
+      "hostmaster@example.com": "elsewhere@test.com",
+      "postmaster@example.com": "elsewhere@test.com"}' \
+  \
+  -e SWIFTDROP_DEFAULT_RECIPIENTS=deliver@example.com \
   -e SWIFTDROP_DEFAULT_AUTH_VERSION=3 \
   -e SWIFTDROP_DEFAULT_AUTHURL=https://keystone-server/v3 \
   -e SWIFTDROP_DEFAULT_USER=myuser \
   -e SWIFTDROP_DEFAULT_KEY=xxx \
-  -e SWIFTDROP_DEFAULT_OS_OPTIONS_PROJECT_ID=123def \
-  -e SWIFTDROP_DEFAULT_OS_OPTIONS_USER_DOMAIN_ID=123def \
+  -e SWIFTDROP_DEFAULT_OS_OPTIONS_PROJECT_NAME=mytenant \
+  -e SWIFTDROP_DEFAULT_OS_OPTIONS_PROJECT_DOMAIN_NAME=mydomain \
+  -e SWIFTDROP_DEFAULT_OS_OPTIONS_USER_DOMAIN_NAME=mydomain \
   -e SWIFTDROP_DEFAULT_CONTAINER=swiftdrop_maildir \
+  \
   -it tmp "$@"

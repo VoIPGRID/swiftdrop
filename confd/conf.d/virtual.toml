@@ -1,0 +1,6 @@
+[template]
+src = "virtual.tmpl"
+dest = "/etc/postfix/virtual"
+keys = [
+    "/forwards",
+]

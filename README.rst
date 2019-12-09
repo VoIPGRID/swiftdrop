@@ -54,20 +54,24 @@ the form ``SWIFTDROP_<SECTION>_<OPTION>``.
 You must specify at least one account where ``SECTION=DEFAULT``. The
 configuration options can be specified using UPPERCASE.
 
-For example, a configuration with one Swift account that distributes
-incoming mail over a ``DEFAULT`` and a specific ``fallback@test.com``
-account, could be configured as follows::
+For example, a configuration with *one Swift account* that distributes
+incoming mail over an *acceptance* and a *production* container, for *three
+distinct e-mail addresses*, could be configured as follows::
 
-    # Postfix configuration (read by start wrapper)
+    # Postfix configuration (read by start wrapper and/or confd)
     MYHOSTNAME=swiftdrop.example.com
-    RELAY_DOMAINS=example.com,test.com
-
-    # Postfix configuration read by confd
-    MYRECIPIENTS='["swiftdrop@example.com", "whatever@test.com"]'
+    # - swiftdrop destinations (see also SWIFTDROP_xxx_RECIPIENTS)
+    RECIPIENTS='[
+      "swiftdrop@example.com", "whatever@test.com", "whatever2@test.com"]'
+    # - forwards to other destinations (postmaster, bounces, ...)
+    FORWARDS='{
+      "postmaster@example.com": "swiftdrop@elsewhere.com",
+      "info@example.com": "swiftdrop@elsewhere.com",
+      "info@test.com": "swiftdrop@elsewhere.com"}'
 
     # Swiftdrop configuration read by confd
-    SWIFTDROP_DEFAULT_RECIPIENT=DEFAULT
-    SWIFTDROP_DEFAULT_CONTAINER=fallback_and_test_container
+    SWIFTDROP_DEFAULT_RECIPIENTS=whatever@test.com,whatever2@test.com
+    SWIFTDROP_DEFAULT_CONTAINER=acceptance
     # Swiftdrop configuration as used by swiftclient.Connection
     SWIFTDROP_DEFAULT_AUTH_VERSION=3
     SWIFTDROP_DEFAULT_AUTHURL=https://keystone-server/v3
@@ -82,7 +86,7 @@ account, could be configured as follows::
     # and need to be overwritten with blanks if they conflict.
     # For sanity, the DEFAULT above is the catch-all, and this
     # one handles only the "production" address.
-    SWIFTDROP_PRODUCTION_RECIPIENT=swiftdrop@example.com
+    SWIFTDROP_PRODUCTION_RECIPIENTS=swiftdrop@example.com
     SWIFTDROP_PRODUCTION_CONTAINER=production
     ...
 
@@ -93,8 +97,8 @@ that may look somewhat like this:
 .. code-block:: ini
 
     [DEFAULT]
-    recipient = DEFAULT
-    container = fallback_and_test_container
+    recipients = whatever@test.com,whatever2@test.com
+    container = acceptance
     auth_version = 3
     authurl = https://keystone-server/v3
     user = myuser
@@ -104,7 +108,7 @@ that may look somewhat like this:
     os_options_user_domain_name = user_domain
 
     [PRODUCTION]
-    recipient = swiftdrop@example.com
+    recipients = swiftdrop@example.com
     container = production
     ...
 
@@ -136,8 +140,6 @@ Non-completed subtickets
 - Add currently implemented cur/MAILDIR scheme in synopsis at the top.
 - Failures are now logged, but K8S is not scraped: need ERRORMAIL handler?
 - Check that HELO hostname is remotely resolvable
-- Fix various @mydomain e-mail addresses to forward to elsewhere (admin,
-  postmaster, hostmaster, etc.. to a Spindle address).
 - Fix mydomain/postmaster@mydomain stuff to catch trouble. Right now
   failures end up at postmaster@$mydomain (which is versturen.nl).
 - Check/fix that SSL is kept up to date (both the ca-certificates -- for

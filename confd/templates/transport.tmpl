@@ -1,3 +1,6 @@
-{{ range jsonArray (getv "/myrecipients" "[]") }}
-{{ . }} swiftdrop
+# Swiftdrop accepted addresses, in the form:
+# EMAIL_DST discard:silently; as they will be handled by smtpd_proxy_filter
+{{ range $key := jsonArray (getv "/recipients" "[]") }}
+#{{ $key }} swiftdrop:
+{{ $key }} discard:silently
 {{- end }}
