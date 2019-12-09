@@ -24,6 +24,7 @@ exec docker run --name swiftdrop_example --rm \
   -e FORWARDS='{
       "hostmaster@example.com": "elsewhere@test.com",
       "postmaster@example.com": "elsewhere@test.com"}' \
+  -e POSTMASTER=elsewhere@test.com \
   \
   -e SWIFTDROP_DEFAULT_RECIPIENTS=deliver@example.com \
   -e SWIFTDROP_DEFAULT_AUTH_VERSION=3 \

@@ -28,14 +28,15 @@ postfix_config() {
     postconf -e "$key = $value"
 }
 
-postfix_config "myhostname" "$MYHOSTNAME"
+postfix_config myhostname "$MYHOSTNAME"
 
 # Take MYDOMAIN or keep domain.tld from a.b.c.domain.tld from MYHOSTNAME
 [ -z "$MYDOMAIN" ] && MYDOMAIN="$(echo "$MYHOSTNAME" |
     sed -e 's/.*[.]\([^.]\+[.][^.]\+\)$/\1/g')"
 
-postfix_config "mydomain" "$MYDOMAIN"
-postfix_config "myorigin" '$mydomain'
+postfix_config mydomain "$MYDOMAIN"
+postfix_config myorigin '$mydomain'
+postfix_config 2bounce_notice_recipient "$POSTMASTER"
 
 # Create /etc/swiftdrop.ini, /etc/postfix/relay_domains,
 # /etc/postfix/transport, /etc/postfix/virtual

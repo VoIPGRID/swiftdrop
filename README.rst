@@ -69,6 +69,7 @@ distinct e-mail addresses*, could be configured as follows::
       "postmaster@example.com": "swiftdrop@elsewhere.com",
       "info@example.com": "swiftdrop@elsewhere.com",
       "info@test.com": "swiftdrop@elsewhere.com"}'
+    POSTMASTER=swiftdrop@elsewhere.com
 
     # Swiftdrop configuration read by confd
     SWIFTDROP_DEFAULT_RECIPIENTS=whatever@test.com,whatever2@test.com

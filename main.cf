@@ -82,4 +82,7 @@ relay_recipient_maps = hash:/etc/postfix/transport
 # Forwards
 virtual_alias_maps = hash:/etc/postfix/virtual
 
+# Double bounces (also configured through the entrypoint)
+2bounce_notice_recipient = postmaster
+
 # Programmatically appended config below this line:
