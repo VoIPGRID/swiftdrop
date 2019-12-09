@@ -46,6 +46,16 @@ test -s /etc/postfix/relay_domains
 postfix_config "relay_domains" "$(\
     sort -u /etc/postfix/relay_domains | tr '\n' ' ')"
 
+# smptd_upstream_proxy_protocol is set by UPSTREAM_PROXY_PROTOCOL
+opt=smtpd_upstream_proxy_protocol
+if grep -q "^[[:blank:]]*-o $opt=" /etc/postfix/master.cf; then
+    sed -i -e "s/$opt=[a-z0-9]*/$opt=$UPSTREAM_PROXY_PROTOCOL/" \
+        /etc/postfix/master.cf
+else
+    echo "no $opt in /etc/postfix/master.cf ?" >&2
+    exit 1
+fi
+
 newaliases
 postmap /etc/postfix/transport
 postmap /etc/postfix/virtual

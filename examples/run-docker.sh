@@ -17,6 +17,8 @@
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 exec docker run --name swiftdrop_example --rm \
+  -e UPSTREAM_PROXY_PROTOCOL= \
+  \
   -e MYHOSTNAME=swiftdrop.example.com \
   -e RECIPIENTS='["deliver@example.com"]' \
   -e FORWARDS='{

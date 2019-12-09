@@ -6,6 +6,9 @@ FROM debian:stretch
 # ARG is used at build time only, unlike ENV which pollutes the final image
 ARG DEBIAN_FRONTEND=noninteractive
 
+# Default to haproxy UPSTREAM_PROXY_PROTOCOL; but you may disable if you want.
+ENV UPSTREAM_PROXY_PROTOCOL=haproxy
+
 # Fetch curl, postfix and python3-swiftclient
 # (we only need curl during the build, but it doesn't hurt to keep)
 RUN apt-get update -q && \
