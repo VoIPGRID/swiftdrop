@@ -11,7 +11,8 @@ ENV UPSTREAM_PROXY_PROTOCOL=haproxy
 
 # Fetch curl, postfix and python3-swiftclient
 # (we only need curl during the build, but it doesn't hurt to keep)
-RUN apt-get update -q && \
+RUN sed -i -e 's#http://[^/]*#http://apt.osso.nl#' /etc/apt/sources.list && \
+    apt-get update -q && \
     apt-get dist-upgrade -y && \
     apt-get install -y --no-install-recommends \
     ca-certificates curl postfix python3 python3-swiftclient && \
