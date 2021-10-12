@@ -1,7 +1,7 @@
 # Dockerfile (part of voipgrid/swiftdrop) builds a multi-daemon service
 #   that has postfix handle incoming mail and sending received mail to
 #   OpenStack Swift.
-FROM debian:stretch
+FROM harbor.osso.io/docker-readonly/library/debian:bullseye
 
 # ARG is used at build time only, unlike ENV which pollutes the final image
 ARG DEBIAN_FRONTEND=noninteractive
@@ -15,7 +15,8 @@ RUN sed -i -e 's#http://[^/]*#http://apt.osso.nl#' /etc/apt/sources.list && \
     apt-get update -q && \
     apt-get dist-upgrade -y && \
     apt-get install -y --no-install-recommends \
-    ca-certificates curl postfix python3 python3-swiftclient && \
+      ca-certificates curl postfix \
+      python3 python3-keystoneclient python3-swiftclient && \
     apt-get clean && rm -rf /var/lib/apt/lists/*
 
 # GoSpawn + postfix-wait.py + postfix to foreground postfix
@@ -41,6 +42,7 @@ RUN path=releases/download/v0.16.0/confd-0.16.0-linux-amd64 && \
 # Config
 COPY confd/ /etc/confd
 COPY main.cf master.cf /etc/postfix/
+RUN chmod 400 /etc/postfix/master.cf
 
 # The swiftdrop daemon that pushes incoming mails to swift
 COPY swiftdrop.py /usr/local/bin/
@@ -54,6 +56,6 @@ EXPOSE 25
 
 # GoSpawn manages both postfix and the swiftdrop daemon
 CMD ["/usr/local/bin/gospawn", "/dev/log", \
-     "--", "service", "postfix", "start", \
+     "--", "postfix", "start-fg", \
      "--", "postfix-wait.py", \
      "--", "swiftdrop.py", "--run-as-proxy"]

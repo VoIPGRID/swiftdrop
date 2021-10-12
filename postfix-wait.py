@@ -40,4 +40,5 @@ while run:
     except RuntimeError:
         pass
     if run:
-        print('.')
+        sys.stderr.write('.')
+        sys.stderr.flush()

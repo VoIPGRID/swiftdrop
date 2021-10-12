@@ -32,16 +32,6 @@ import sys
 
 # Set up logging (no datetime, this is handled by docker/k8s).
 log = logging.getLogger(__name__)
-log.setLevel(logging.DEBUG)
-try:
-    handler = SysLogHandler(
-        address='/dev/log', facility=SysLogHandler.LOG_DAEMON)
-except FileNotFoundError:
-    handler = logging.StreamHandler()
-formatter = logging.Formatter(
-    '[%(process)d] %(module)s.%(funcName)s: %(message)s')
-handler.setFormatter(formatter)
-log.addHandler(handler)
 
 
 class SmtpProxyMaster:
@@ -504,6 +494,22 @@ def main_lda(config, recipients, message):
     uploader.upload(recipients, message)
 
 
+def _setup_syslog(log):
+    """
+    Set up logging when running as daemon
+    """
+    log.setLevel(logging.DEBUG)
+    try:
+        handler = SysLogHandler(
+            address='/dev/log', facility=SysLogHandler.LOG_DAEMON)
+    except FileNotFoundError:
+        handler = logging.StreamHandler()
+    formatter = logging.Formatter(
+        '[%(process)d] %(module)s.%(funcName)s: %(message)s')
+    handler.setFormatter(formatter)
+    log.addHandler(handler)
+
+
 def main():
     # There are three modes of operation:
     # - proxy-daemon-mode
@@ -537,6 +543,8 @@ def main():
             'default config options written to {}'.format(args.config))
 
     if args.run_as_proxy and not args.test_connect:
+        global log
+        _setup_syslog(log)
         main_proxy(config)
     elif not args.recipients:
         exit_message('error: missing recipients', parser=parser)
